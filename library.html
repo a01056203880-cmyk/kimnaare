@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>도서관 타이쿤</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #f4ead5; /* 종이 색 바탕 */
+      font-family: "Malgun Gothic", sans-serif;
+      color: #3d2a1a;
+    }
+    button { font-family: inherit; cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: 0.4; }
+    .hidden { display: none !important; }
+
+    /* ===== 위쪽 정보 막대 ===== */
+    #hud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 20px;
+      justify-content: center;
+      align-items: center;
+      padding: 12px 16px;
+      background: #5a3b24;
+      color: #fff;
+      font-size: 16px;
+    }
+    #hud b { color: #ffd23f; font-size: 20px; }
+
+    /* ===== 게임 화면 ===== */
+    main {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: center;
+      padding: 16px;
+    }
+    #scene {
+      position: relative;
+      width: 640px;
+      max-width: 100%;
+      height: 440px;
+      background: #6b4a2f;
+      border: 6px solid #3d2a1a;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    /* 뒤쪽 책장 */
+    .shelf {
+      position: absolute;
+      left: 0; right: 0;
+      height: 70px;
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      padding: 0 10px;
+      border-bottom: 10px solid #a87447;
+    }
+    .spine { border-radius: 2px 2px 0 0; }
+
+    /* 이용자 */
+    .patron {
+      position: absolute;
+      bottom: 70px;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: transform 0.6s, opacity 0.6s;
+      cursor: pointer;
+      z-index: 2;
+    }
+    .patron.away { transform: translateX(calc(-50% - 700px)); opacity: 0; }
+    .patron.leave { transform: translateX(calc(-50% + 700px)); opacity: 0; }
+    .figure { position: relative; line-height: 0; }
+    .heldBook { position: absolute; right: -8px; bottom: 40px; font-size: 28px; line-height: 1; }
+    .bubble {
+      background: #fff;
+      border-radius: 14px;
+      padding: 6px 12px;
+      font-weight: bold;
+      font-size: 14px;
+      white-space: nowrap;
+      box-shadow: 0 3px 0 rgba(0,0,0,0.2);
+    }
+    .patience {
+      width: 90px;
+      height: 8px;
+      background: rgba(0,0,0,0.35);
+      border-radius: 4px;
+      margin: 5px 0;
+      overflow: hidden;
+    }
+    .patience div { height: 100%; width: 100%; background: #34c759; }
+
+    /* 사서 (플레이어) */
+    #librarian {
+      position: absolute;
+      bottom: 70px;
+      transform: translateX(-50%);
+      transition: left 0.4s;
+      line-height: 0;
+      z-index: 2;
+    }
+
+    /* 데스크 */
+    #desk {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 100px;
+      background: #c68642;
+      border-top: 10px solid #8b5e3c;
+      z-index: 3;
+    }
+    .deskCtl {
+      position: absolute;
+      top: 8px;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .sign {
+      background: #3d2a1a;
+      color: #ffd23f;
+      font-weight: bold;
+      font-size: 14px;
+      padding: 3px 12px;
+      border-radius: 6px;
+    }
+    .takeBtn {
+      padding: 10px 22px;
+      font-size: 17px;
+      font-weight: bold;
+      border: none;
+      border-radius: 30px;
+      background: #fff;
+      color: #5a3b24;
+      box-shadow: 0 4px 0 #8b5e3c;
+      white-space: nowrap;
+    }
+
+    /* 알림 (정답/오답) */
+    #toast {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-weight: bold;
+      text-align: center;
+      color: #fff;
+      z-index: 5;
+    }
+    #toast.good { background: #2e9e4f; }
+    #toast.bad { background: #d9433b; }
+
+    /* 규칙 카드 */
+    #rules {
+      width: 270px;
+      max-width: 100%;
+      background: #fffdf6;
+      border: 3px solid #c68642;
+      border-radius: 10px;
+      padding: 14px 18px;
+      align-self: flex-start;
+    }
+    #rules h3 { margin: 0 0 8px; }
+    #rules ol { padding-left: 20px; margin: 0; line-height: 1.7; }
+    #rules .locked { color: #aaa; }
+
+    /* ===== 컴퓨터 화면 ===== */
+    #computer {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 10;
+    }
+    .monitorFrame {
+      width: 740px;
+      max-width: 100%;
+      max-height: 100%;
+      overflow-y: auto;
+      background: #222;
+      border-radius: 16px;
+      padding: 14px;
+    }
+    .screen {
+      background: #eaf3fb;
+      border-radius: 8px;
+      padding: 14px;
+    }
+    /* 다른 도서관 책 경고 (화면 제일 위) */
+    #foreignBanner {
+      background: #d9433b;
+      color: #fff;
+      font-size: 20px;
+      font-weight: bold;
+      text-align: center;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      animation: blink 0.6s 3;
+    }
+    @keyframes blink { 50% { opacity: 0.3; } }
+    .screenTitle {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: space-between;
+      align-items: center;
+      background: #1e5b8a;
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-weight: bold;
+      margin-bottom: 12px;
+    }
+    .screenTitle .patience { margin: 0; width: 90px; }
+    .titleRight { display: flex; align-items: center; gap: 10px; }
+    #otherAlert { font-size: 13px; color: #ffd23f; display: flex; align-items: center; gap: 6px; }
+    #closeBtn { border: none; background: #fff; color: #1e5b8a; border-radius: 6px; padding: 3px 10px; font-weight: bold; }
+    .cols { display: flex; flex-wrap: wrap; gap: 12px; }
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 10px 12px;
+      border: 1px solid #c9dbea;
+    }
+    .profile { width: 180px; text-align: center; font-size: 14px; line-height: 1.6; }
+    .records { flex: 1; min-width: 260px; }
+    .request { margin-top: 8px; padding: 6px; background: #fff6d6; border-radius: 6px; }
+    .card h4 { margin: 0 0 6px; color: #1e5b8a; }
+    .card ul { margin: 0 0 10px; padding-left: 18px; font-size: 14px; line-height: 1.6; }
+    .overdue { color: #d9433b; font-weight: bold; }
+    .scanArea { margin-top: 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    #scanBtn {
+      padding: 10px 18px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      background: #1e5b8a;
+      color: #fff;
+    }
+    #scanResult { flex: 1; min-width: 220px; font-size: 14px; line-height: 1.6; }
+    .actions { display: flex; gap: 10px; margin-top: 14px; }
+    .actions button {
+      flex: 1;
+      padding: 14px;
+      font-size: 18px;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+    }
+    #loanBtn { background: #2e9e4f; }
+    #returnBtn { background: #1e90ff; }
+    #refuseBtn { background: #d9433b; }
+
+    /* ===== 시작 / 하루 끝 화면 ===== */
+    #overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(61, 42, 26, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 20;
+    }
+    .panel {
+      background: #fffdf6;
+      border-radius: 16px;
+      padding: 24px 28px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+    }
+    .panel h1 { margin: 0 0 12px; }
+    .panel ol { text-align: left; line-height: 1.7; padding-left: 22px; }
+    .panel .bigBtn {
+      margin-top: 12px;
+      padding: 14px 36px;
+      font-size: 20px;
+      font-weight: bold;
+      border: none;
+      border-radius: 30px;
+      background: #5a3b24;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <!-- 위쪽 정보 막대 -->
+  <div id="hud">
+    <span>🏛️ <b style="font-size:16px;color:#fff">햇살 도서관</b> · <span id="rank">작은 동네 도서관</span></span>
+    <span>도서관 점수 <b id="score">0</b></span>
+    <span>📅 <span id="day">1</span>일차</span>
+    <span>👥 남은 손님 <span id="left">0</span>명</span>
+  </div>
+
+  <main>
+    <!-- 도서관 장면 -->
+    <div id="scene">
+      <div id="shelves"></div>
+      <div id="toast" class="hidden"></div>
+      <div id="stage"></div>
+      <div id="desk"></div>
+    </div>
+
+    <!-- 규칙 카드 -->
+    <div id="rules">
+      <h3>📋 사서 업무 규칙</h3>
+      <ol>
+        <li>반납 요청이면 <b>반납</b> 버튼</li>
+        <li>대출은 1명당 <b>최대 3권</b>까지예요. 이미 3권이면 <b>거절</b></li>
+        <li><span class="overdue">연체된 책</span>이 있으면 대출 <b>거절</b> (반납은 받아줘요)</li>
+        <li class="day2 locked">2일차부터 <b>대출대·반납대</b>가 나뉘어요</li>
+        <li class="day2 locked"><b>햇살 도서관</b> 책이 아니면 <b>거절</b></li>
+      </ol>
+      <p style="font-size:14px; margin-bottom:0;">
+        ⭕ 정답 +10 · 빨리 처리하면 보너스 +5<br>
+        ❌ 실수 −10 · ⏰ 너무 늦으면 −5
+      </p>
+    </div>
+  </main>
+
+  <!-- 컴퓨터 화면 -->
+  <div id="computer" class="hidden">
+    <div class="monitorFrame">
+      <div class="screen">
+        <div id="foreignBanner" class="hidden"></div>
+        <div class="screenTitle">
+          <span id="pcTitle">📚 햇살 도서관 대출·반납 시스템</span>
+          <div class="titleRight">
+            <div class="patience"><div id="pcBar"></div></div>
+            <button id="closeBtn">닫기 ✖</button>
+          </div>
+          <div id="otherAlert" class="hidden"></div>
+        </div>
+        <div class="cols">
+          <div class="card profile">
+            <div id="pcFace"></div>
+            <div><b id="pcName">이름</b></div>
+            <div>아이디: <span id="pcId">LIB-0000</span></div>
+            <div id="pcAge"></div>
+            <div class="request" id="pcRequest">💬</div>
+          </div>
+          <div class="card records">
+            <h4>📕 대출 이력 (지금 빌린 책)</h4>
+            <ul id="pcLoans"></ul>
+            <h4>📗 반납 이력</h4>
+            <ul id="pcReturns"></ul>
+          </div>
+        </div>
+        <div class="card scanArea">
+          <button id="scanBtn">📷 책 스캔</button>
+          <div id="scanResult">책을 스캔해 주세요.</div>
+        </div>
+        <div class="actions">
+          <button id="loanBtn" disabled>대출</button>
+          <button id="returnBtn" disabled>반납</button>
+          <button id="refuseBtn" disabled>거절</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 시작 / 하루 끝 화면 -->
+  <div id="overlay">
+    <div class="panel" id="panel">
+      <h1>📚 도서관 타이쿤</h1>
+      <div id="introLibrarian"></div>
+      <p>나는 <b>햇살 도서관</b> 사서! 손님의 대출·반납을 처리해서<br>도서관 점수를 높여 보세요.</p>
+      <ol>
+        <li>손님이 오면 <b>📖 책 받기</b>를 눌러요.</li>
+        <li>컴퓨터 화면에서 손님 정보를 확인해요.</li>
+        <li><b>📷 책 스캔</b>을 눌러요.</li>
+        <li>규칙에 맞게 <b>대출 / 반납 / 거절</b> 중 하나를 눌러요.</li>
+      </ol>
+      <button class="bigBtn" id="startBtn">게임 시작</button>
+    </div>
+  </div>
+
+  <script>
+    // ===== 1. 게임에 쓰는 재료 =====
+    const OUR_LIBRARY = "햇살 도서관";
+    const OTHER_LIBRARIES = ["달빛 도서관", "푸른숲 도서관", "별빛 도서관", "바다 도서관"];
+    const BOOKS = [
+      "어린 왕자", "데미안", "코스모스", "사피엔스", "아몬드", "연금술사",
+      "노인과 바다", "1984", "이기적 유전자", "총, 균, 쇠", "미움받을 용기",
+      "나미야 잡화점의 기적", "달러구트 꿈 백화점", "불편한 편의점", "채식주의자",
+      "소년이 온다", "작별하지 않는다", "해리 포터와 마법사의 돌", "어떻게 살 것인가",
+      "역사의 쓸모", "멋진 신세계", "동물농장", "위대한 개츠비", "모모", "꽃들에게 희망을"
+    ];
+    const NAMES = ["김하늘", "이도윤", "박서연", "최민준", "정지우", "강하은", "조시우",
+                   "윤서준", "장예린", "임도현", "한소율", "오준서", "서다인", "신유찬", "권나은"];
+    const LOAN_WORDS = ["이 책 빌리고 싶어요!", "이거 대출해 주세요~", "이 책 빌려 갈게요."];
+    const RETURN_WORDS = ["책 반납하러 왔어요.", "다 읽었어요! 반납할게요.", "이 책 돌려드릴게요."];
+    const BOOK_ICONS = ["📕", "📗", "📘", "📙"];
+
+    // 이용자 나이대 (어린이부터 노인까지 골고루)
+    const AGES = [
+      { label: "어린이", min: 7, max: 12, scale: 0.72, styles: ["pigtails", "short", "bob", "spiky"],
+        hairColors: ["#2b1d14", "#5a3b24", "#1a1a1a"], glasses: 0.1, mustache: 0 },
+      { label: "청소년", min: 13, max: 18, scale: 0.86, styles: ["short", "long", "spiky", "bob"],
+        hairColors: ["#2b1d14", "#5a3b24", "#1a1a1a", "#8b5a2b"], glasses: 0.3, mustache: 0 },
+      { label: "청년", min: 19, max: 35, scale: 1, styles: ["short", "long", "bob", "spiky", "bun"],
+        hairColors: ["#2b1d14", "#1a1a1a", "#8b5a2b", "#c68642", "#7a2e2e"], glasses: 0.3, mustache: 0.1 },
+      { label: "중년", min: 36, max: 64, scale: 1, styles: ["short", "bob", "long", "bun"],
+        hairColors: ["#2b1d14", "#1a1a1a", "#4a3a30", "#6b6b6b"], glasses: 0.5, mustache: 0.25 },
+      { label: "노인", min: 65, max: 88, scale: 0.95, styles: ["bun", "bald", "short", "bob"],
+        hairColors: ["#d9d9d9", "#f2f2f2", "#a6a6a6"], glasses: 0.6, mustache: 0.3 }
+    ];
+    const SKINS = ["#ffe0c2", "#f9cfa5", "#e8b48a", "#c68d63", "#8d5a3b"];
+    const SHIRTS = ["#e74c3c", "#3498db", "#2ecc71", "#f1c40f", "#9b59b6", "#e67e22", "#1abc9c", "#ff8fab", "#34495e"];
+
+    // 플레이어(사서) 모습: 2등신 + 뿔테 안경
+    const LIBRARIAN = {
+      librarian: true, scale: 1.05, skin: "#ffe0c2", hair: "#2b1d14",
+      style: "short", shirt: "#ffffff", glasses: false, mustache: false
+    };
+
+    // 점수에 따라 바뀌는 도서관 등급
+    const RANKS = [
+      { score: 0, name: "작은 동네 도서관" },
+      { score: 100, name: "마을 도서관" },
+      { score: 250, name: "구립 도서관" },
+      { score: 450, name: "시립 도서관" },
+      { score: 700, name: "국립 도서관" }
+    ];
+
+    // ===== 2. 게임 상태 =====
+    const state = {
+      score: 0,
+      day: 1,
+      perDay: 0,       // 오늘 올 손님 수
+      spawned: 0,      // 오늘 들어온 손님 수
+      served: 0,       // 오늘 처리한 손님 수
+      correct: 0, wrong: 0, missed: 0, dayStart: 0,
+      maxPatience: 0,
+      desks: [],       // 창구 목록 (1일차 1개, 2일차부터 2개)
+      active: null     // 지금 컴퓨터를 보고 있는 창구 번호
+    };
+
+    // ===== 3. 작은 도우미 함수 =====
+    const $ = id => document.getElementById(id);
+    const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+    const rand = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+    const shuffle = arr => [...arr].sort(() => Math.random() - 0.5);
+
+    // 게임 속 오늘 날짜 (1일차 = 10월 12일)
+    function dateAfter(days) {
+      const d = new Date(2026, 9, 12);
+      d.setDate(d.getDate() + state.day - 1 + days);
+      return (d.getMonth() + 1) + "/" + d.getDate();
+    }
+
+    function rankName() {
+      let name = RANKS[0].name;
+      for (const r of RANKS) if (state.score >= r.score) name = r.name;
+      return name;
+    }
+
+    // ===== 4. 2D 캐릭터 그리기 (SVG 그림) =====
+    // 무작위 이용자 모습 만들기
+    function makeLook() {
+      const age = pick(AGES);
+      return {
+        age: age.label,
+        years: rand(age.min, age.max),
+        scale: age.scale,
+        skin: pick(SKINS),
+        hair: pick(age.hairColors),
+        style: pick(age.styles),
+        shirt: pick(SHIRTS),
+        glasses: Math.random() < age.glasses,
+        mustache: Math.random() < age.mustache,
+        wrinkles: age.label === "노인",
+        blush: age.label === "어린이"
+      };
+    }
+
+    // 모습(L)과 기분(mood: smile / happy / angry)으로 캐릭터 그림 만들기
+    function personSVG(L, mood, size) {
+      const h = L.hair;
+      const fringe = `<path d="M19 44 Q18 9 50 9 Q82 9 81 44 Q74 24 50 23 Q26 24 19 44Z" fill="${h}"/>`;
+      const back = {
+        long: `<path d="M17 40 Q17 7 50 7 Q83 7 83 40 L86 92 Q72 88 68 64 L32 64 Q28 88 14 92Z" fill="${h}"/>`,
+        bob: `<path d="M16 44 Q16 7 50 7 Q84 7 84 44 L83 70 L17 70Z" fill="${h}"/>`,
+        pigtails: `<circle cx="14" cy="48" r="11" fill="${h}"/><circle cx="86" cy="48" r="11" fill="${h}"/>`,
+        bun: `<circle cx="50" cy="8" r="12" fill="${h}"/>`
+      }[L.style] || "";
+      const front = {
+        spiky: `<path d="M19 42 L22 16 L33 22 L39 6 L50 17 L61 6 L67 22 L78 16 L81 42 Q72 25 50 25 Q28 25 19 42Z" fill="${h}"/>`,
+        bald: `<path d="M19 50 Q16 30 27 25 L29 48Z" fill="${h}"/><path d="M81 50 Q84 30 73 25 L71 48Z" fill="${h}"/>`
+      }[L.style] || fringe;
+
+      // 얼굴 표정
+      const eyeR = L.blush ? 4 : 3.3;
+      let face = `<circle cx="39" cy="47" r="${eyeR}" fill="#2b1d14"/><circle cx="61" cy="47" r="${eyeR}" fill="#2b1d14"/>`;
+      if (mood === "angry") {
+        face += `<path d="M31 37 L45 42 M69 37 L55 42" stroke="#2b1d14" stroke-width="3" stroke-linecap="round"/>
+                 <path d="M42 64 Q50 57 58 64" stroke="#7a2e2e" stroke-width="3" fill="none" stroke-linecap="round"/>
+                 <ellipse cx="50" cy="44" rx="30" ry="26" fill="#ff0000" opacity="0.12"/>`;
+      } else if (mood === "happy") {
+        face += `<path d="M41 58 Q50 69 59 58Z" fill="#a33" />`;
+      } else {
+        face += `<path d="M43 59 Q50 64 57 59" stroke="#7a2e2e" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;
+      }
+      if (L.blush || mood === "happy") {
+        face += `<ellipse cx="31" cy="56" rx="5" ry="3" fill="#ff8fab" opacity="0.6"/><ellipse cx="69" cy="56" rx="5" ry="3" fill="#ff8fab" opacity="0.6"/>`;
+      }
+      if (L.wrinkles) {
+        face += `<path d="M28 45 L24 43 M28 49 L24 50 M72 45 L76 43 M72 49 L76 50 M40 32 Q50 29 60 32" stroke="#a0704d" stroke-width="1.5" fill="none"/>`;
+      }
+      if (L.mustache) {
+        face += `<path d="M39 56 Q50 49 61 56 Q50 59 39 56Z" fill="${h === "#f2f2f2" ? "#d9d9d9" : h}"/>`;
+      }
+      if (L.glasses) {
+        face += `<g stroke="#333" stroke-width="2" fill="none"><circle cx="39" cy="47" r="8"/><circle cx="61" cy="47" r="8"/><path d="M47 47 L53 47"/></g>`;
+      }
+
+      // 몸 (옷)
+      let body = `<path d="M20 140 Q20 78 50 76 Q80 78 80 140Z" fill="${L.shirt}"/>
+                  <path d="M42 77 L50 88 L58 77" stroke="rgba(0,0,0,0.25)" stroke-width="2" fill="none"/>`;
+
+      // 사서만: 가디건 + 이름표 + 뿔테 안경
+      if (L.librarian) {
+        body += `<path d="M20 140 Q20 80 42 77 L46 140Z" fill="#6b8e4e"/>
+                 <path d="M80 140 Q80 80 58 77 L54 140Z" fill="#6b8e4e"/>
+                 <rect x="56" y="96" width="18" height="10" rx="2" fill="#ffd23f"/>
+                 <text x="65" y="104" font-size="7" text-anchor="middle" fill="#3d2a1a" font-weight="bold">사서</text>`;
+        face += `<g stroke="#3a2416" stroke-width="4" fill="rgba(255,255,255,0.25)">
+                   <rect x="28" y="39" width="20" height="15" rx="4"/><rect x="52" y="39" width="20" height="15" rx="4"/>
+                 </g>
+                 <path d="M48 44 L52 44" stroke="#3a2416" stroke-width="3"/>
+                 <path d="M28 43 L20 41 M72 43 L80 41" stroke="#3a2416" stroke-width="3"/>`;
+      }
+
+      const w = (size || 110) * L.scale;
+      return `<svg viewBox="0 0 100 140" width="${w}" height="${w * 1.4}">
+        ${back}
+        ${body}
+        <circle cx="20" cy="48" r="6" fill="${L.skin}"/><circle cx="80" cy="48" r="6" fill="${L.skin}"/>
+        <ellipse cx="50" cy="45" rx="31" ry="32" fill="${L.skin}"/>
+        ${front}
+        ${face}
+      </svg>`;
+    }
+
+    // ===== 5. 책장 그리기 (책 색깔은 무작위) =====
+    function drawShelves() {
+      const colors = ["#c0392b", "#2e86c1", "#27ae60", "#f1c40f", "#8e44ad",
+                      "#e67e22", "#16a085", "#F0EEE9", "#34495e", "#d35400"];
+      let html = "";
+      for (let s = 0; s < 3; s++) {
+        html += `<div class="shelf" style="top:${10 + s * 80}px">`;
+        for (let i = 0; i < 40; i++) {
+          html += `<div class="spine" style="width:${rand(10, 18)}px;height:${rand(40, 62)}px;background:${pick(colors)}"></div>`;
+        }
+        html += "</div>";
+      }
+      $("shelves").innerHTML = html;
+    }
+
+    // ===== 6. 손님 만들기 =====
+    // kind(손님 종류)에 따라 정답 버튼이 정해져요
+    //  returnOk: 반납 / loanOk: 대출 / tooMany: 거절(3권) / overdue: 거절(연체) / foreign: 거절(다른 도서관 책)
+    function makePatron(deskType) {
+      let kind;
+      const r = Math.random();
+      if (deskType === "return") kind = r < 0.25 ? "foreign" : "returnOk";
+      else if (deskType === "loan") kind = r < 0.15 ? "foreign" : r < 0.6 ? "loanOk" : r < 0.8 ? "tooMany" : "overdue";
+      else kind = r < 0.5 ? "returnOk" : r < 0.8 ? "loanOk" : r < 0.9 ? "tooMany" : "overdue";
+
+      // 지금 빌린 책 수
+      let loanCount = rand(0, 2);
+      if (kind === "tooMany") loanCount = 3;
+      if (kind === "returnOk") loanCount = rand(1, 3);
+      if (kind === "overdue") loanCount = rand(1, 2);
+
+      const titles = shuffle(BOOKS);
+      const loans = titles.slice(0, loanCount).map(t => ({ title: t, daysLeft: rand(1, 14) }));
+      if (kind === "overdue") loans[0].daysLeft = -rand(1, 7);
+      // 반납하러 온 손님은 연체됐을 수도 있어요 (그래도 반납은 받아줘요)
+      if (kind === "returnOk" && Math.random() < 0.3) loans[0].daysLeft = -rand(1, 5);
+
+      const returns = titles.slice(loanCount, loanCount + rand(1, 4))
+        .map(t => ({ title: t, ago: rand(3, 60) }))
+        .sort((a, b) => a.ago - b.ago);
+
+      const request = kind === "returnOk" || (kind === "foreign" && deskType === "return") ? "return" : "loan";
+      const answer = kind === "returnOk" ? "return" : kind === "loanOk" ? "loan" : "refuse";
+
+      return {
+        kind, request, answer, loans, returns,
+        book: kind === "returnOk" ? loans[0].title : titles[10], // 손님이 들고 온 책
+        lib: kind === "foreign" ? pick(OTHER_LIBRARIES) : OUR_LIBRARY, // 책의 소속 도서관
+        words: pick(request === "loan" ? LOAN_WORDS : RETURN_WORDS),
+        look: makeLook(),
+        id: "LIB-" + rand(1000, 9999),
+        name: pick(NAMES),
+        code: "HS" + rand(100000, 999999)
+      };
+    }
+
+    // 틀렸을 때 알려주는 설명
+    function explain(p) {
+      if (p.kind === "returnOk") return "반납하러 온 손님이에요. '반납'을 눌러야 해요.";
+      if (p.kind === "loanOk") return "대출해도 되는 손님이에요. '대출'을 눌러야 해요.";
+      if (p.kind === "tooMany") return "이미 3권을 빌렸어요. '거절'을 눌러야 해요.";
+      if (p.kind === "overdue") return "연체된 책이 있어요. '거절'을 눌러야 해요.";
+      return `'${p.lib}' 책이에요. '거절'을 눌러야 해요.`;
+    }
+
+    // ===== 7. 창구(데스크) 만들기 =====
+    // 1일차: 창구 1개 (대출·반납) / 2일차부터: 대출대 + 반납대
+    function setupDesks() {
+      state.desks = state.day === 1
+        ? [{ type: "all", x: 50 }]
+        : [{ type: "loan", x: 25 }, { type: "return", x: 75 }];
+      const label = { all: "📚 대출·반납대", loan: "📕 대출대", return: "📗 반납대" };
+
+      $("stage").innerHTML = state.desks.map((d, i) => `
+        <div class="patron away" id="patron${i}" style="left:${d.x - 10}%">
+          <div class="bubble" id="bubble${i}"></div>
+          <div class="patience"><div id="bar${i}"></div></div>
+          <div class="figure"><span id="fig${i}"></span><span class="heldBook" id="book${i}"></span></div>
+        </div>`).join("") +
+        `<div id="librarian" style="left:${state.desks[0].x + 11}%">${personSVG(LIBRARIAN, "smile")}</div>`;
+
+      $("desk").innerHTML = state.desks.map((d, i) => `
+        <div class="deskCtl" style="left:${d.x}%">
+          <div class="sign">${label[d.type]}</div>
+          <button class="takeBtn" id="take${i}" disabled>📖 책 받기</button>
+        </div>`).join("");
+
+      state.desks.forEach((d, i) => {
+        d.patron = null;
+        $("take" + i).onclick = () => openComputer(i);
+        $("patron" + i).onclick = () => openComputer(i);
+      });
+    }
+
+    // ===== 8. 하루 흐름 =====
+    function startGame() {
+      state.score = 0;
+      state.day = 1;
+      startDay();
+    }
+
+    function startDay() {
+      state.perDay = 6 + state.day * 2;                          // 날마다 손님이 2명씩 늘어요
+      state.maxPatience = Math.max(20 - (state.day - 1) * 2, 8); // 날마다 손님이 덜 기다려요 (최소 8초)
+      if (state.day >= 2) state.maxPatience += 6;                // 창구가 2개라 조금 더 기다려 줘요
+      state.spawned = 0;
+      state.served = 0;
+      state.correct = 0; state.wrong = 0; state.missed = 0;
+      state.dayStart = state.score;
+      state.active = null;
+      document.querySelectorAll(".day2").forEach(el => el.classList.toggle("locked", state.day < 2));
+      $("overlay").classList.add("hidden");
+      setupDesks();
+      updateHUD();
+      state.desks.forEach((d, i) => setTimeout(() => spawn(i), 600 + i * 2500));
+    }
+
+    // i번 창구에 새 손님 부르기
+    function spawn(i) {
+      if (state.spawned >= state.perDay) return; // 오늘 손님이 다 왔으면 그만
+      state.spawned++;
+      const d = state.desks[i];
+      const p = makePatron(d.type);
+      d.patron = p;
+      d.scanned = false;
+      d.answered = false;
+      d.patience = state.maxPatience;
+
+      $("fig" + i).innerHTML = personSVG(p.look, "smile");
+      $("book" + i).textContent = pick(BOOK_ICONS);
+      $("bubble" + i).textContent = p.words;
+
+      // 왼쪽에서 걸어 들어오기
+      const el = $("patron" + i);
+      el.style.transition = "none";
+      el.className = "patron away";
+      void el.offsetWidth; // 위치를 바로 적용하고 나서 움직이게 하는 요령
+      el.style.transition = "";
+      el.className = "patron";
+      $("take" + i).disabled = false;
+    }
+
+    // ===== 9. 컴퓨터 화면 =====
+    function openComputer(i) {
+      const d = state.desks[i];
+      const p = d.patron;
+      if (!p || d.answered) return;
+      state.active = i;
+
+      // 사서가 그 창구로 걸어가기
+      $("librarian").style.left = (d.x + 11) + "%";
+
+      const deskName = { all: "대출·반납대", loan: "대출대", return: "반납대" }[d.type];
+      $("pcTitle").textContent = `📚 ${OUR_LIBRARY} 시스템 · ${deskName}`;
+      $("pcFace").innerHTML = personSVG({ ...p.look, scale: 1 }, "smile", 100);
+      $("pcName").textContent = p.name;
+      $("pcId").textContent = p.id;
+      $("pcAge").textContent = `${p.look.years}세 (${p.look.age})`;
+      $("pcRequest").textContent = "💬 " + p.words;
+
+      // 대출 이력 (반납 예정일, 연체 표시)
+      $("pcLoans").innerHTML = p.loans.length === 0
+        ? "<li>빌린 책이 없어요</li>"
+        : p.loans.map(l => l.daysLeft < 0
+            ? `<li>${l.title} — <span class="overdue">반납일 ${dateAfter(l.daysLeft)} (${-l.daysLeft}일 연체!)</span></li>`
+            : `<li>${l.title} — 반납일 ${dateAfter(l.daysLeft)} (${l.daysLeft}일 남음)</li>`
+          ).join("") + `<li><b>지금 ${p.loans.length}권 빌림</b></li>`;
+
+      // 반납 이력
+      $("pcReturns").innerHTML = p.returns.map(r => `<li>${r.title} — ${dateAfter(-r.ago)} 반납</li>`).join("");
+
+      showScan(d);
+      $("computer").classList.remove("hidden");
+      updatePatience();
+    }
+
+    function closeComputer() {
+      state.active = null;
+      $("computer").classList.add("hidden");
+    }
+
+    // 스캔 결과 보여주기 (스캔 전이면 안내 문구)
+    function showScan(d) {
+      const p = d.patron;
+      $("foreignBanner").classList.add("hidden");
+      if (!d.scanned) {
+        $("scanResult").textContent = "책을 스캔해 주세요.";
+        $("scanBtn").disabled = false;
+        setAnswerButtons(false);
+        return;
+      }
+      let status;
+      if (p.kind === "foreign") status = `<span class="overdue">우리 도서관 책이 아니에요</span>`;
+      else if (p.kind === "returnOk") status = "대출 중 (이 이용자가 빌린 책)";
+      else status = "대출 가능";
+      $("scanResult").innerHTML = `삑! 📖 <b>${p.book}</b><br>소속: <b>${p.lib}</b> · 등록번호: ${p.kind === "foreign" ? "없음" : p.code}<br>상태: ${status}`;
+
+      // 다른 도서관 책이면 화면 제일 위에 크게 경고
+      if (p.lib !== OUR_LIBRARY) {
+        $("foreignBanner").textContent = `⚠️ 이 책은 '${p.lib}' 책이에요! (우리는 ${OUR_LIBRARY})`;
+        $("foreignBanner").classList.remove("hidden");
+      }
+      $("scanBtn").disabled = true;
+      setAnswerButtons(!d.answered);
+    }
+
+    function scanBook() {
+      const d = state.desks[state.active];
+      d.scanned = true;
+      showScan(d);
+    }
+
+    function setAnswerButtons(on) {
+      $("loanBtn").disabled = !on;
+      $("returnBtn").disabled = !on;
+      $("refuseBtn").disabled = !on;
+    }
+
+    // ===== 10. 버튼을 눌렀을 때 =====
+    function answer(choice) {
+      const i = state.active;
+      const d = state.desks[i];
+      const p = d.patron;
+      if (!p || d.answered || !d.scanned) return;
+      setAnswerButtons(false);
+
+      if (choice === p.answer) {
+        let gain = 10;
+        let msg = "⭕ 정답! +10";
+        if (d.patience > state.maxPatience / 2) {
+          gain += 5;
+          msg += " (빠른 처리 보너스 +5)";
+        }
+        state.score += gain;
+        state.correct++;
+        showToast(msg, true);
+        patronLeave(i, p.answer === "refuse" ? "아, 그렇군요. 알겠어요!" : "감사합니다!", "happy");
+      } else {
+        state.score -= 10;
+        state.wrong++;
+        showToast("❌ 실수! −10 · " + explain(p), false);
+        patronLeave(i, "에이, 이게 뭐예요!", "angry");
+      }
+      updateHUD();
+    }
+
+    // 너무 오래 기다리게 하면 손님이 떠나요
+    function timeOut(i) {
+      state.score -= 5;
+      state.missed++;
+      showToast("⏰ 너무 오래 기다려서 손님이 떠났어요 −5", false);
+      patronLeave(i, "너무 오래 걸리네요…", "angry");
+      updateHUD();
+    }
+
+    function patronLeave(i, words, mood) {
+      const d = state.desks[i];
+      d.answered = true;
+      $("take" + i).disabled = true;
+      $("bubble" + i).textContent = words;
+      $("fig" + i).innerHTML = personSVG(d.patron.look, mood);
+      setTimeout(() => { if (state.active === i) closeComputer(); }, 700);
+      setTimeout(() => { $("patron" + i).className = "patron leave"; }, 1200);
+      setTimeout(() => {
+        d.patron = null;
+        state.served++;
+        updateHUD();
+        if (state.served >= state.perDay) endDay();
+        else setTimeout(() => spawn(i), 400);
+      }, 1900);
+    }
+
+    // ===== 11. 하루 끝 =====
+    function endDay() {
+      closeComputer();
+      const oldRank = RANKS.filter(r => state.dayStart >= r.score).length;
+      const newRank = RANKS.filter(r => state.score >= r.score).length;
+      const diff = state.score - state.dayStart;
+      $("panel").innerHTML = `
+        <h1>📅 ${state.day}일차 끝!</h1>
+        <ol>
+          <li>⭕ 정답: ${state.correct}명</li>
+          <li>❌ 실수: ${state.wrong}명</li>
+          <li>⏰ 놓친 손님: ${state.missed}명</li>
+          <li>오늘 점수: <b>${diff >= 0 ? "+" : ""}${diff}</b> (전체 ${state.score}점)</li>
+        </ol>
+        <p>${newRank > oldRank ? "🎉 축하해요! 도서관이 <b>" + rankName() + "</b>(으)로 커졌어요!" : "🏛️ 지금 도서관: <b>" + rankName() + "</b>"}</p>
+        <p style="font-size:14px">${state.day === 1
+          ? "📢 내일부터 <b>대출대</b>와 <b>반납대</b>가 나뉘어요! 다른 도서관 책을 가져오는 손님도 와요."
+          : "내일은 손님이 더 많고, 더 급해요!"}</p>
+        <button class="bigBtn" id="nextDayBtn">다음 날</button>`;
+      $("overlay").classList.remove("hidden");
+      $("nextDayBtn").onclick = () => { state.day++; startDay(); };
+    }
+
+    // ===== 12. 화면 업데이트 =====
+    function updateHUD() {
+      $("score").textContent = state.score;
+      $("day").textContent = state.day;
+      $("left").textContent = state.perDay - state.served;
+      $("rank").textContent = rankName();
+    }
+
+    let toastTimer;
+    function showToast(msg, good) {
+      const t = $("toast");
+      t.textContent = msg;
+      t.className = good ? "good" : "bad";
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.add("hidden"), 2500);
+    }
+
+    function barColor(ratio) {
+      return ratio > 0.5 ? "#34c759" : ratio > 0.25 ? "#ffcc00" : "#ff3b30";
+    }
+
+    // 기다림 막대들 다시 그리기
+    function updatePatience() {
+      const alert = [];
+      state.desks.forEach((d, i) => {
+        const ratio = d.patron ? Math.max(d.patience / state.maxPatience, 0) : 0;
+        const bars = [$("bar" + i)];
+        if (state.active === i) bars.push($("pcBar"));
+        for (const bar of bars) {
+          bar.style.width = (ratio * 100) + "%";
+          bar.style.background = barColor(ratio);
+        }
+        // 컴퓨터를 보는 동안 다른 창구에 손님이 기다리면 알려주기
+        if (state.active !== null && state.active !== i && d.patron && !d.answered) {
+          const name = d.type === "loan" ? "대출대" : "반납대";
+          alert.push(`🔔 ${name} 손님 기다리는 중 <span class="patience" style="display:inline-block;width:60px;margin:0"><div style="width:${ratio * 100}%;background:${barColor(ratio)}"></div></span>`);
+        }
+      });
+      $("otherAlert").innerHTML = alert.join(" ");
+      $("otherAlert").classList.toggle("hidden", alert.length === 0);
+    }
+
+    // 0.1초마다 손님들의 기다림 줄이기
+    setInterval(() => {
+      state.desks.forEach((d, i) => {
+        if (!d.patron || d.answered) return;
+        d.patience -= 0.1;
+        if (d.patience <= 0) timeOut(i);
+      });
+      updatePatience();
+    }, 100);
+
+    // ===== 13. 버튼 연결 =====
+    $("startBtn").onclick = startGame;
+    $("closeBtn").onclick = closeComputer;
+    $("scanBtn").onclick = scanBook;
+    $("loanBtn").onclick = () => answer("loan");
+    $("returnBtn").onclick = () => answer("return");
+    $("refuseBtn").onclick = () => answer("refuse");
+
+    drawShelves();
+    setupDesks();
+    $("introLibrarian").innerHTML = personSVG(LIBRARIAN, "happy", 90);
+    updateHUD();
+  </script>
+</body>
+</html>
