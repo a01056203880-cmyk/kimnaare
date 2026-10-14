@@ -356,14 +356,296 @@
     .panel h1 { margin: 0 0 12px; font-size: 28px; }
     .panel ol { text-align: left; line-height: 1.8; padding-left: 22px; }
     .panel .bigBtn { margin-top: 12px; padding: 12px 36px; font-size: 20px; }
-    #introLibrarian img { animation: bounce 0.8s steps(1) infinite; }
     @keyframes bounce { 50% { transform: translateY(-6px); } }
+
+    /* ===== 게임 시작 화면 ===== */
+    #titleScreen {
+      position: fixed;
+      inset: 0;
+      background: rgba(20, 10, 4, 0.93);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: safe center; /* 화면이 작아도 위가 잘리지 않게 */
+      gap: 14px;
+      padding: 16px;
+      overflow-y: auto;
+      z-index: 30;
+    }
+    /* 제목: 책이 펼쳐지면서 "도서관 타이쿤" 글자가 튀어나와요 */
+    .bookStage { position: relative; display: flex; flex-direction: column; align-items: center; }
+    .logo {
+      position: relative;
+      z-index: 3;            /* 책보다 앞 → 글자가 책에 가려지지 않아요 */
+      margin-bottom: -18px;
+      text-align: center;
+      line-height: 1.1;
+    }
+    .logo span {
+      position: relative;
+      display: inline-block;
+      color: transparent;     /* 글자 자리만 잡고, 그림은 아래 ::before / ::after가 그려요 */
+      opacity: 0;
+    }
+    /* 책을 눌러서 펼쳐지면(.opened) 글자가 하나씩 튀어나와요 */
+    .opened .logo span {
+      animation: pop 0.6s cubic-bezier(.3, 1.6, .5, 1) both;
+      animation-delay: calc(0.6s + var(--i) * 0.13s);
+    }
+    .logo span::before, .logo span::after {
+      content: attr(data-t);
+      position: absolute;
+      left: 0; top: 0;
+    }
+    /* 뒤: 옆면 두께 + 테두리 + 종이 테두리 + 그림자 */
+    .logo span::before { color: var(--ink); }
+    /* 앞면: 도서관 바닥 나무색 (위는 밝고 아래로 갈수록 어둡게) */
+    .logo span::after {
+      background: linear-gradient(to bottom, #f3cf95 0 20%, #e8b97c 20% 45%, #dca668 45% 75%, #d29a5c 75%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    @keyframes pop {
+      0% { transform: translateY(160px) scale(0.3); opacity: 0; }
+      30% { opacity: 1; }
+      100% { transform: none; opacity: 1; }
+    }
+    .bigTitle {
+      font-weight: bold;
+      font-size: clamp(56px, 17vw, 108px);
+      letter-spacing: 8px;
+    }
+    .bigTitle span::before {
+      text-shadow:
+        0 2px #b0743f,
+        0 4px #b0743f,
+        0 6px #b0743f,
+        0 8px #b0743f,
+        -4px -4px var(--ink),
+        -4px 0px var(--ink),
+        -4px 4px var(--ink),
+        -4px 8px var(--ink),
+        -4px 12px var(--ink),
+        0px -4px var(--ink),
+        0px 12px var(--ink),
+        4px -4px var(--ink),
+        4px 0px var(--ink),
+        4px 4px var(--ink),
+        4px 8px var(--ink),
+        4px 12px var(--ink),
+        -9px -9px #fff4d6,
+        -9px 0px #fff4d6,
+        -9px 8px #fff4d6,
+        -9px 17px #fff4d6,
+        0px -9px #fff4d6,
+        0px 17px #fff4d6,
+        9px -9px #fff4d6,
+        9px 0px #fff4d6,
+        9px 8px #fff4d6,
+        9px 17px #fff4d6,
+        5px 24px rgba(0,0,0,0.45);
+    }
+    .subTitle {
+      margin-top: 8px;
+      font-weight: bold;
+      font-size: clamp(30px, 9vw, 48px);
+      letter-spacing: 14px;
+      padding-left: 14px;    /* 글자 간격 때문에 오른쪽으로 쏠리지 않게 */
+    }
+    .subTitle span::before {
+      text-shadow:
+        0 1px #b0743f,
+        0 3px #b0743f,
+        0 4px #b0743f,
+        0 6px #b0743f,
+        -3px -3px var(--ink),
+        -3px 0px var(--ink),
+        -3px 3px var(--ink),
+        -3px 6px var(--ink),
+        -3px 8px var(--ink),
+        0px -3px var(--ink),
+        0px 8px var(--ink),
+        3px -3px var(--ink),
+        3px 0px var(--ink),
+        3px 3px var(--ink),
+        3px 6px var(--ink),
+        3px 8px var(--ink),
+        -6px -6px #fff4d6,
+        -6px 0px #fff4d6,
+        -6px 6px #fff4d6,
+        -6px 12px #fff4d6,
+        0px -6px #fff4d6,
+        0px 12px #fff4d6,
+        6px -6px #fff4d6,
+        6px 0px #fff4d6,
+        6px 6px #fff4d6,
+        6px 12px #fff4d6,
+        4px 17px rgba(0,0,0,0.45);
+    }
+    /* 글자 주변에서 반짝반짝 빛나는 작은 하얀 별 */
+    .twinkle {
+      position: absolute;
+      z-index: 3;
+      width: 4px; height: 4px;
+      background: #fff;
+      box-shadow: 4px 0 #fff, -4px 0 #fff, 0 4px #fff, 0 -4px #fff;
+      opacity: 0;
+    }
+    .opened .twinkle {
+      animation: twinkle 1.6s steps(4) infinite;
+      animation-delay: calc(1.7s + var(--d));
+    }
+    @keyframes twinkle {
+      0%, 100% { opacity: 0; transform: scale(0.5); }
+      50% { opacity: 1; transform: scale(1.2); }
+    }
+    /* 책: 닫힌 책이 흔들리다가 → 펼쳐져요 */
+    .book {
+      position: relative;
+      z-index: 2;
+      width: 420px;
+      max-width: 100%;
+      line-height: 0;
+      cursor: pointer;
+      animation: nudge 1.6s steps(1) infinite;   /* 눌러 달라고 살짝 들썩여요 */
+    }
+    @keyframes nudge { 80% { transform: translateY(-4px); } 90% { transform: none; } }
+    .opened .book { cursor: default; animation: shake 0.5s steps(4), squash 0.3s 0.5s steps(2); }
+    .book img { width: 100%; height: auto; }
+    .book .open { position: absolute; left: 0; top: 0; opacity: 0; }
+    .opened .book .open { animation: show 0.5s steps(1) forwards; }
+    .opened .book .closed { animation: hide 0.5s steps(1) forwards; }
+    /* 닫힌 책 표지의 제목 딱지 */
+    .bookLabel {
+      position: absolute;
+      left: 33.3%; top: 39.5%;
+      width: 33.3%; height: 26.3%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: clamp(11px, 3.4vw, 17px);
+      line-height: 1;
+      color: #8f2a2a;
+    }
+    .opened .bookLabel { animation: hide 0.5s steps(1) forwards; }
+    /* 펼친 책 한가운데에 붙인 노란 포스트잇 */
+    .pageText {
+      position: absolute;
+      left: 50%; top: 50%;         /* 책의 정가운데 */
+      transform: translate(-50%, -50%) rotate(-3deg);
+      padding: 10px 14px 8px;
+      white-space: nowrap;
+      font-weight: bold;
+      font-size: clamp(12px, 3.6vw, 18px);
+      line-height: 1;
+      color: var(--ink);
+      /* 위쪽 끈끈한 부분은 조금 진하게, 오른쪽 아래 모서리는 살짝 접혔어요 */
+      background:
+        linear-gradient(135deg, transparent calc(100% - 10px), #e8cf4a calc(100% - 10px)),
+        linear-gradient(to bottom, #f7e36a 0 5px, #fff27a 5px);
+      clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+      opacity: 0;
+    }
+    .opened .pageText { animation: show 0.4s steps(2) 1.4s forwards; }
+    @keyframes show { 0% { opacity: 0; } 100% { opacity: 1; } }
+    @keyframes hide { 0% { opacity: 1; } 100% { opacity: 0; } }
+    @keyframes shake { 25% { transform: rotate(-3deg); } 75% { transform: rotate(3deg); } }
+    @keyframes squash { 50% { transform: scale(1.06, 0.9); } }
+    /* 책에서 튀어나오는 반짝이 */
+    .spark {
+      position: absolute;
+      left: 50%; top: 62%;
+      z-index: 3;
+      width: 6px; height: 6px;
+      background: #fff;
+      box-shadow: 6px 0 #fff, -6px 0 #fff, 0 6px #fff, 0 -6px #fff;
+      opacity: 0;
+    }
+    .opened .spark { animation: burst 1s ease-out 0.55s; }
+    @keyframes burst {
+      0% { transform: translate(0, 0); opacity: 1; }
+      100% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
+    }
+
+    .menu { display: flex; flex-direction: column; gap: 14px; width: 240px; margin-top: 6px; }
+    /* 도트 버튼: 바깥 = 진한 테두리, 안쪽 = 색칠한 면 (모서리가 계단 모양) */
+    .dotbtn {
+      --bg: #dca668; --hl: #f3cf95; --sd: #b0743f;   /* 게임 시작: 도서관 바닥색 */
+      padding: 4px;
+      border: none;
+      background: var(--ink);
+      font-weight: bold;
+      font-size: 22px;
+      color: var(--ink);
+      clip-path: polygon(8px 0, calc(100% - 8px) 0, calc(100% - 8px) 4px, calc(100% - 4px) 4px,
+        calc(100% - 4px) 8px, 100% 8px, 100% calc(100% - 8px), calc(100% - 4px) calc(100% - 8px),
+        calc(100% - 4px) calc(100% - 4px), calc(100% - 8px) calc(100% - 4px), calc(100% - 8px) 100%,
+        8px 100%, 8px calc(100% - 4px), 4px calc(100% - 4px), 4px calc(100% - 8px), 0 calc(100% - 8px),
+        0 8px, 4px 8px, 4px 4px, 8px 4px);
+    }
+    .dotbtn span {
+      display: block;
+      padding: 12px 0 16px;
+      background: var(--bg);
+      box-shadow: inset 0 -6px 0 var(--sd), inset 4px 4px 0 var(--hl), inset -4px 0 0 var(--sd);
+      text-shadow: 2px 2px 0 var(--hl);
+      clip-path: polygon(4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+        100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%,
+        4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px), 0 4px, 4px 4px);
+    }
+    .dotbtn:hover span { filter: brightness(1.08); }
+    .dotbtn:active { transform: translateY(3px); }
+    .dotbtn:active span { padding: 14px 0 14px; box-shadow: inset 4px 4px 0 var(--sd); }
+    #helpBtn { --bg: #6ab0f0; --hl: #b4dcff; --sd: #3a7ac8; color: #fff; }
+    #helpBtn span { text-shadow: 2px 2px 0 var(--ink); }
+
+    /* 캐릭터 고르기 (메인 화면) */
+    .charList { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
+    .charCard {
+      width: 132px;
+      padding: 10px 6px 8px;
+      font-size: 15px;
+      color: var(--ink);
+      background: #e9d3a8;
+      border: 4px solid var(--ink);
+      box-shadow: inset 0 -5px 0 #c9a46a, 0 5px 0 var(--ink);
+    }
+    .charCard:hover { transform: translateY(-3px); }
+    .charCard.selected {
+      background: var(--paperHi);
+      box-shadow: inset 0 -5px 0 #e6b86a, 0 5px 0 var(--ink), 0 0 0 4px #ffd23f;
+    }
+    .charCard.selected img { animation: bounce 0.8s steps(1) infinite; }
+    .charCard .pic { height: 104px; display: flex; align-items: flex-end; justify-content: center; line-height: 0; }
+    .charCard b { display: block; margin-top: 6px; }
+    .charCard.selected b::before { content: "✔ "; color: #5aa83a; }
+
+    /* 게임 설명 */
+    #helpPanel { text-align: left; max-width: 520px; }
+    #helpPanel h2 { margin: 0 0 8px; font-size: 20px; text-align: center; }
+    #helpPanel h3 { margin: 14px 0 6px; font-size: 16px; }
+    .levels { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+    .levels li {
+      display: flex; gap: 10px; align-items: center;
+      padding: 6px 10px;
+      background: var(--paperHi);
+      border: 2px solid #e6b86a;
+      font-size: 14px; line-height: 1.5;
+    }
+    .lv {
+      flex-shrink: 0;
+      padding: 2px 6px;
+      color: #fff;
+      background: #5aa83a;
+      border: 2px solid var(--ink);
+      font-size: 12px;
+    }
+    .levels small { color: #8a6a4a; }
   </style>
 </head>
 <body>
   <!-- 위쪽 정보 막대 -->
   <div id="hud">
-    <span class="chip">🏛️ <b>햇살 도서관</b> · <span id="rank">작은 동네 도서관</span></span>
+    <span class="chip">🏛️ <b>문정두두 도서관</b> · <span id="rank">작은 동네 도서관</span></span>
     <span class="chip">⭐ 점수 <b id="score">0</b></span>
     <span class="chip">📅 <span id="day">1</span>일차</span>
     <span class="chip">👥 남은 이용자 <span id="left">0</span>명</span>
@@ -389,7 +671,7 @@
         <li>대출은 1명당 <b>최대 5권</b>까지예요. 이미 5권이면 <b>거절</b></li>
         <li><span class="overdue">연체된 책</span>이 있으면 대출 <b>거절</b> (반납은 받아줘요)</li>
         <li class="day2 locked">2일차부터 <b>대출대·반납대</b>가 나뉘어요</li>
-        <li class="day2 locked"><b>햇살 도서관</b> 책이 아니면 <b>거절</b></li>
+        <li class="day2 locked"><b>문정두두 도서관</b> 책이 아니면 <b>거절</b></li>
       </ol>
       <p style="font-size:13px; margin-bottom:0; line-height:1.7;">
         ⭕ 정답 +10 · 빨리 처리하면 보너스 +5<br>
@@ -404,7 +686,7 @@
       <div class="screen">
         <div id="foreignBanner" class="hidden"></div>
         <div class="screenTitle">
-          <span id="pcTitle">📚 햇살 도서관 대출·반납 시스템</span>
+          <span id="pcTitle">📚 문정두두 도서관 대출·반납 시스템</span>
           <div class="titleRight">
             <div class="patience"><div id="pcBar"></div></div>
             <button id="closeBtn" class="pxbtn">닫기 ✖</button>
@@ -443,25 +725,71 @@
     </div>
   </div>
 
-  <!-- 시작 / 하루 끝 화면 -->
-  <div id="overlay">
-    <div class="panel pxbox" id="panel">
-      <h1>📚 도서관 타이쿤</h1>
-      <div id="introLibrarian"></div>
-      <p>나는 <b>햇살 도서관</b> 사서! 이용자의 대출·반납을 처리해서<br>도서관 점수를 높여 보세요.</p>
+  <!-- 하루 끝 화면 -->
+  <div id="overlay" class="hidden">
+    <div class="panel pxbox" id="panel"></div>
+  </div>
+
+  <!-- 게임 시작 화면 -->
+  <div id="titleScreen">
+    <!-- 첫 화면: 제목 + 버튼 -->
+    <div id="titleMenu" style="display:contents">
+      <div class="bookStage">
+        <div class="logo">
+          <div class="bigTitle"><span data-t="도" style="--i:0">도</span><span data-t="서" style="--i:1">서</span><span data-t="관" style="--i:2">관</span></div>
+          <div class="subTitle"><span data-t="타" style="--i:4">타</span><span data-t="이" style="--i:5">이</span><span data-t="쿤" style="--i:6">쿤</span></div>
+          <i class="twinkle" style="left:-6%; top:8%; --d:0s"></i>
+          <i class="twinkle" style="left:98%; top:4%; --d:0.5s"></i>
+          <i class="twinkle" style="left:20%; top:-6%; --d:0.9s"></i>
+          <i class="twinkle" style="left:74%; top:-4%; --d:0.3s"></i>
+          <i class="twinkle" style="left:-2%; top:62%; --d:1.1s"></i>
+          <i class="twinkle" style="left:96%; top:58%; --d:0.7s"></i>
+          <i class="twinkle" style="left:12%; top:92%; --d:1.3s"></i>
+          <i class="twinkle" style="left:86%; top:90%; --d:0.2s"></i>
+        </div>
+        <div class="book" id="book"></div>
+        <i class="spark" style="--dx:-170px; --dy:-120px"></i>
+        <i class="spark" style="--dx:-110px; --dy:-210px"></i>
+        <i class="spark" style="--dx:0px; --dy:-250px"></i>
+        <i class="spark" style="--dx:120px; --dy:-200px"></i>
+        <i class="spark" style="--dx:175px; --dy:-110px"></i>
+      </div>
+      <div class="charList" id="charList"></div>
+      <div class="menu">
+        <button class="dotbtn" id="startBtn"><span>▶ 게임 시작</span></button>
+        <button class="dotbtn" id="helpBtn"><span>? 게임 설명</span></button>
+      </div>
+    </div>
+
+    <!-- 게임 설명 -->
+    <div class="panel pxbox hidden" id="helpPanel">
+      <h2>❓ 게임 설명</h2>
+      <p>나는 <b>문정두두 도서관</b> 사서! 이용자의 대출·반납을 처리해서 점수를 모으면 도서관이 <b>레벨업</b>해요.</p>
+      <h3>🎮 하는 방법</h3>
       <ol>
         <li>이용자가 오면 <b>📖 책 받기</b>를 눌러요.</li>
         <li>컴퓨터 화면에서 이용자 정보를 확인해요.</li>
         <li><b>📷 책 스캔</b>을 눌러요.</li>
         <li>규칙에 맞게 <b>대출 / 반납 / 거절</b> 중 하나를 눌러요.</li>
       </ol>
-      <button class="bigBtn pxbtn" id="startBtn">게임 시작</button>
+      <h3>⬆️ 레벨업하면 서비스가 늘어나요</h3>
+      <ul class="levels">
+        <li><span class="lv">Lv.1</span><span><b>작은 동네 도서관</b><br>📚 대출·반납 <small>(0점~)</small></span></li>
+        <li><span class="lv">Lv.2</span><span><b>마을 도서관</b><br>🔖 책 예약 서비스 <small>(100점~)</small></span></li>
+        <li><span class="lv">Lv.3</span><span><b>구립 도서관</b><br>🔄 상호대차 (다른 도서관 책 빌려오기) <small>(250점~)</small></span></li>
+        <li><span class="lv">Lv.4</span><span><b>시립 도서관</b><br>💿 DVD·전자책 대출 <small>(450점~)</small></span></li>
+        <li><span class="lv">Lv.5</span><span><b>국립 도서관</b><br>🏛️ 귀중 자료 열람실 <small>(700점~)</small></span></li>
+      </ul>
+      <div style="text-align:center">
+        <button class="bigBtn pxbtn" id="backBtn">◀ 돌아가기</button>
+      </div>
     </div>
+
   </div>
 
   <script>
     // ===== 1. 게임에 쓰는 재료 =====
-    const OUR_LIBRARY = "햇살 도서관";
+    const OUR_LIBRARY = "문정두두 도서관";
     const MAX_LOANS = 5; // 1명이 빌릴 수 있는 최대 권수
     const OTHER_LIBRARIES = ["달빛 도서관", "푸른숲 도서관", "별빛 도서관", "바다 도서관"];
     const BOOKS = [
@@ -494,11 +822,17 @@
     const SHIRTS = ["#e74c3c", "#3498db", "#2ecc71", "#f1c40f", "#9b59b6", "#e67e22", "#1abc9c", "#ff8fab", "#34495e"];
     const PANTS = ["#3b4a6b", "#4a3a2a", "#2f2f3a", "#5a6b3a", "#6b4a6b"];
 
-    // 플레이어(사서) 모습: 초록 가디건 + 뿔테 안경
-    const LIBRARIAN = {
-      librarian: true, skin: "#ffe0c2", hair: "#3b2416", style: "short",
-      shirt: "#f4f1e8", pants: "#4a3a2a", glasses: true, mustache: false, blush: true
-    };
+    // 고를 수 있는 사서(플레이어) 캐릭터
+    const CHARACTERS = [
+      { name: "문헌 선생님",
+        look: { librarian: true, skin: "#ffe0c2", hair: "#3b2416", style: "short",
+                shirt: "#f4f1e8", pants: "#4a3a2a", glasses: false, dotEyes: true, mustache: false, blush: true } },
+      { name: "정보 선생님",
+        look: { librarian: true, skin: "#ffe6cf", hair: "#4a2a1a", style: "allback",
+                shirt: "#fff8f0", pants: "#5d6fa8", cardigan: "#d9c09a",
+                glasses: false, mustache: false, blush: true, lashes: true, lips: "#d9536f" } }
+    ];
+    let LIBRARIAN = CHARACTERS[0].look; // 지금 고른 캐릭터
 
     // 점수에 따라 바뀌는 도서관 등급
     const RANKS = [
@@ -627,8 +961,13 @@
     // 몸통, 팔, 다리 (frame 1이면 한쪽 다리를 들어요 → 걷는 모습)
     function bodyAndLegs(R, L, front, frame) {
       const s = L.shirt, sD = shade(s, 0.78), p = L.pants, shoe = "#3a2418", k = L.skin;
-      R(5, 19, 8, 2, p);
-      R(6, 21, 2, 2, p); R(10, 21, 2, 2, p);
+      if (L.skirt) {   // 치마 + 맨다리
+        R(6, 21, 2, 2, k); R(10, 21, 2, 2, k);
+        R(4, 19, 10, 2, L.skirt); R(4, 20, 10, 1, shade(L.skirt, 0.8)); R(5, 19, 1, 2, shade(L.skirt, 1.2)); R(9, 19, 1, 2, shade(L.skirt, 1.2));
+      } else {
+        R(5, 19, 8, 2, p);
+        R(6, 21, 2, 2, p); R(10, 21, 2, 2, p);
+      }
       if (frame === 1) { R(6, 22, 2, 1, shoe); R(10, 23, 2, 1, shoe); }
       else { R(6, 23, 2, 1, shoe); R(10, 23, 2, 1, shoe); }
 
@@ -636,7 +975,7 @@
       R(4, 13, 1, 5, front ? s : sD); R(13, 13, 1, 5, sD);
       if (front) { R(12, 13, 1, 5, sD); R(8, 13, 2, 1, shade(k, 0.9)); }
       if (L.librarian) {   // 사서만: 초록 가디건 + 단추 + 노란 이름표
-        const cg = "#5f8f4e";
+        const cg = L.cardigan || "#5f8f4e";
         R(4, 13, 4, 6, cg); R(10, 13, 4, 6, cg); R(13, 13, 1, 5, shade(cg, 0.78));
         R(7, 15, 1, 1, "#e8d27a"); R(7, 17, 1, 1, "#e8d27a");
         R(10, 15, 3, 2, "#ffd23f"); R(10, 16, 3, 1, "#e0a020");
@@ -684,6 +1023,10 @@
       // 머리카락
       if (L.style === "bald") {
         R(4, 5, 1, 4, h); R(13, 5, 1, 4, h); R(6, 3, 2, 1, shade(k, 1.25));
+      } else if (L.style === "allback") {   // 올백: 이마가 다 보이게 머리를 뒤로 넘겨요
+        R(14, 9, 2, 5, h); R(15, 14, 1, 1, h);                 // 뒤로 묶은 머리 꼬리
+        R(5, 2, 8, 1, h); R(4, 3, 10, 2, h); R(4, 5, 1, 3, h); R(13, 5, 1, 3, h);
+        R(6, 3, 1, 1, hL); R(8, 2, 1, 2, hL); R(10, 3, 2, 1, hL); // 빗어 넘긴 결
       } else {
         R(5, 2, 8, 1, h); R(4, 3, 10, 2, h); R(4, 5, 3, 1, h); R(9, 5, 5, 1, h); // 앞머리
         R(4, 6, 1, 3, h); R(13, 6, 1, 3, h); R(6, 3, 3, 1, hL);
@@ -702,6 +1045,8 @@
         R(6, 7, 2, 2, "#cfe8f7"); R(10, 7, 2, 2, "#cfe8f7");
         if (mood === "happy") { R(6, 8, 2, 1, eye); R(10, 8, 2, 1, eye); }
         else { R(7, 7, 1, 2, eye); R(10, 7, 1, 2, eye); }
+      } else if (L.dotEyes) {          // 점 눈
+        R(7, 7, 1, 2, eye); R(10, 7, 1, 2, eye);
       } else if (mood === "happy") {   // ^ ^ 웃는 눈
         R(5, 8, 1, 1, eye); R(6, 7, 1, 1, eye); R(7, 8, 1, 1, eye);
         R(10, 8, 1, 1, eye); R(11, 7, 1, 1, eye); R(12, 8, 1, 1, eye);
@@ -709,6 +1054,7 @@
         R(6, 7, 2, 2, eye); R(10, 7, 2, 2, eye);
         R(6, 7, 1, 1, "#fff"); R(10, 7, 1, 1, "#fff");
       }
+      if (L.lashes && !L.glasses) { R(5, 7, 1, 1, eye); R(12, 7, 1, 1, eye); } // 속눈썹
       if (mood === "angry" && !L.glasses) { R(6, 6, 2, 1, eye); R(10, 6, 2, 1, eye); }
 
       // 볼터치
@@ -721,7 +1067,7 @@
       if (L.mustache) R(7, 10, 4, 1, h === "#f2f2f2" ? "#d9d9d9" : h);
       if (mood === "happy") { R(7, mouthY, 4, 1, "#8a3324"); if (!L.mustache) R(8, 11, 2, 1, "#e8707a"); }
       else if (mood === "angry") { R(8, mouthY, 2, 1, eye); R(7, mouthY + 1, 1, 1, eye); R(10, mouthY + 1, 1, 1, eye); }
-      else R(8, mouthY, 2, 1, "#8a3324");
+      else R(8, mouthY, 2, 1, L.lips || "#8a3324");
 
       // 안경 (사서는 두꺼운 갈색 뿔테)
       if (L.glasses) {
@@ -729,6 +1075,36 @@
         const box = (x, y, w, hh) => { R(x, y, w, 1, fc); R(x, y + hh - 1, w, 1, fc); R(x, y, 1, hh, fc); R(x + w - 1, y, 1, hh, fc); };
         box(5, 6, 4, 4); box(9, 6, 4, 4);
         R(4, 7, 1, 1, fc); R(13, 7, 1, 1, fc);
+      }
+      return outline(g);
+    }
+
+    // 시작 화면의 책 (open: 펼친 책 / 아니면 닫힌 책)
+    function bookGrid(open) {
+      const g = makeGrid(84, 38), R = brush(g);
+      const cv = "#b33a3a", cvD = "#8f2a2a", cvL = "#d0574a";
+      const pg = "#fbf1d6", pgD = "#e8d6a8", ln = "#c9b48a";
+      if (!open) {
+        R(22, 12, 40, 18, cv); R(23, 13, 38, 1, cvL);                       // 앞표지
+        R(22, 12, 3, 24, cvD);                                              // 책등
+        R(25, 30, 36, 4, pg); R(25, 31, 36, 1, pgD); R(25, 33, 36, 1, pgD); // 책장 옆면
+        R(22, 34, 40, 2, cvD);                                              // 뒤표지
+        R(28, 15, 28, 10, "#ffd23f"); R(28, 15, 28, 1, "#fff3a0"); R(28, 24, 28, 1, "#e0a020"); // 제목 딱지
+        return outline(g);
+      }
+      R(0, 14, 84, 20, cv); R(0, 34, 84, 2, cvD);                           // 아래 표지
+      for (let x = 3; x <= 80; x++) {
+        const t = x < 42 ? (x - 3) / 39 : (80 - x) / 38;   // 0: 바깥쪽 끝, 1: 가운데 접힌 곳
+        const top = Math.round(10 - 6 * Math.sin(Math.PI * t * 0.8) + (t > 0.85 ? (t - 0.85) * 30 : 0));
+        const bottom = 30 + Math.round(t * 2);
+        R(x, top, 1, bottom - top, pg);                    // 종이
+        R(x, top, 1, 1, "#fffaf0");
+        R(x, bottom, 1, 3, pgD); R(x, bottom + 1, 1, 1, ln); // 아래 겹친 종이들
+      }
+      R(41, 10, 2, 24, "#d9c495");                         // 가운데 접힌 곳
+      for (const y of [24, 27]) {                          // 글줄 (위쪽은 부제목 자리로 비워 둬요)
+        R(8, y, rand(20, 28), 1, ln);
+        R(47, y, rand(20, 28), 1, ln);
       }
       return outline(g);
     }
@@ -897,7 +1273,7 @@
         look: makeLook(),
         id: "LIB-" + rand(1000, 9999),
         name: pick(NAMES),
-        code: "HS" + rand(100000, 999999),
+        code: "MD" + rand(100000, 999999),
         bookColor: pick(BOOK_COLORS)
       };
     }
@@ -965,6 +1341,7 @@
 
     // ===== 9. 하루 흐름 =====
     function startGame() {
+      $("titleScreen").classList.add("hidden");
       state.score = 0;
       state.day = 1;
       startDay();
@@ -1224,6 +1601,21 @@
 
     // ===== 14. 버튼 연결 =====
     $("startBtn").onclick = startGame;
+    // 메인 화면에서 캐릭터 고르기 (누른 카드가 선택돼요)
+    $("charList").innerHTML = CHARACTERS.map((c, i) => `
+      <button class="charCard${i === 0 ? " selected" : ""}" id="char${i}">
+        <div class="pic">${toImg(frontSprite(c.look, "smile", 0), 4)}</div>
+        <b>${c.name}</b>
+      </button>`).join("");
+    CHARACTERS.forEach((c, i) => {
+      $("char" + i).onclick = () => {
+        LIBRARIAN = c.look;
+        document.querySelectorAll(".charCard").forEach(el => el.classList.toggle("selected", el.id === "char" + i));
+      };
+    });
+    // 게임 설명 열기 / 닫기
+    $("helpBtn").onclick = () => { $("titleMenu").classList.add("hidden"); $("helpPanel").classList.remove("hidden"); };
+    $("backBtn").onclick = () => { $("helpPanel").classList.add("hidden"); $("titleMenu").classList.remove("hidden"); };
     $("closeBtn").onclick = closeComputer;
     $("scanBtn").onclick = scanBook;
     $("loanBtn").onclick = () => answer("loan");
@@ -1232,7 +1624,11 @@
 
     drawRoom();
     setupDesks();
-    $("introLibrarian").innerHTML = toImg(frontSprite(LIBRARIAN, "happy", 0), 6);
+    $("book").innerHTML = toImg(bookGrid(false), 5, "closed") + toImg(bookGrid(true), 5, "open") +
+      `<span class="bookLabel">눌러보세요!</span>` +
+      `<span class="pageText">문정두두 도서관 사서 이야기</span>`;
+    // 책을 누르면 펼쳐지면서 제목이 튀어나와요
+    $("book").onclick = () => $("book").parentElement.classList.add("opened");
     updateHUD();
   </script>
 </body>
